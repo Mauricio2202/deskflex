@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% from "_sala.html" import sala_asientos %}
+{% block title %}Invitación a sala{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Invitación a {{ r.espacio }}</h1><p>{{ r.cliente }} te invitó a su junta. Elige tu asiento entre los apartados para el equipo.</p></div>
+  <span class="badge badge--{{ r.estado_clave }}">{{ r.estado_txt }}</span>
+</div>
+{% if not abierta %}
+  <div class="alert alert--error" role="alert">{{ icon('alert', 20) }}<span>Esta reserva ya no está activa (estado: {{ r.estado_txt|lower }}). Pide a quien organiza la junta un enlace nuevo.</span></div>
+{% else %}
+<div class="inv-grid" id="inv" data-api="{{ url_for('client.invitacion_estado', token=r.token) }}" data-mio="{{ mio or '' }}">
+  <section class="card">
+    <div class="step-head"><span class="step-n">{{ icon('users', 18) }}</span><h2 style="font-size:1.25rem">Elige tu asiento</h2></div>
+    <div class="legend" aria-label="Leyenda">
+      <span><i class="l-libre"></i>Disponible</span><span><i class="l-ocupado"></i>Ocupado por otro integrante</span><span><i class="l-sel"></i>Tu asiento</span><span><i class="l-nd"></i>No apartado</span>
+    </div>
+    <div class="map-frame sala-frame">{{ sala_asientos(sala, {'nombre': r.espacio}, reservados, tomados, mio) }}</div>
+    <div class="alert alert--info mapmsg" id="inv-msg" role="status" hidden>{{ icon('info', 20) }}<span></span></div>
+    <form method="post" action="{{ url_for('client.invitacion_asiento', token=r.token) }}" id="inv-form" class="inv-bar">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="asiento" id="inv-asiento" value="{{ mio or '' }}">
+      <div><b id="inv-txt">{% if mio %}Tu asiento actual: {{ mio }}{% else %}Toca un asiento disponible{% endif %}</b>
+        <small id="inv-libres">{{ libres }} de {{ reservados|length }} asientos sin elegir</small></div>
+      <button class="btn btn--accent" id="inv-btn" type="submit" disabled>{{ icon('check', 18) }} {{ 'Cambiar asiento' if mio else 'Confirmar asiento' }}</button>
+    </form>
+  </section>
+
+  <aside class="inv-side">
+    <div class="card order">
+      <h3>Detalles de la junta</h3>
+      <dl>
+        <div><dt>Sala</dt><dd>{{ r.espacio }}</dd></div>
+        <div><dt>Fecha</dt><dd>{{ r.fecha|fecha }}</dd></div>
+        <div><dt>Horario</dt><dd>{{ r.v.reservado }}</dd></div>
+        <div><dt>Montaje (30 min antes)</dt><dd>{{ r.v.montaje }}</dd></div>
+        <div><dt>Desmontaje y limpieza</dt><dd>{{ r.v.desmontaje }}</dd></div>
+      </dl>
+    </div>
+    {% if mio %}
+    <div class="card qr-mini">
+      <h3>Tu acceso</h3>
+      <p class="muted">Este es el código QR de todo el equipo. Muéstralo en la entrada entre las {{ r.v.acceso.split(' – ')[0] }} y las {{ r.v.acceso.split(' – ')[1] }}.</p>
+      <div class="qr-box">{{ r.qr|safe }}</div>
+      <span class="folio">{{ r.folio }}</span>
+    </div>
+    {% endif %}
+    {% if es_organizador %}<a class="btn btn--outline" href="{{ url_for('client.reserva', folio=r.folio) }}">Ver el pase de la reserva</a>{% endif %}
+  </aside>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}{% if abierta %}<script src="{{ url_for('static', filename='js/invitacion.js') }}" defer></script>{% endif %}{% endblock %}

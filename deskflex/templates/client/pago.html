@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% from "_marcas.html" import marca %}
+{% macro err(k) %}{% if errores.get(k) %}<span class="error-text" id="e-{{ k }}">{{ icon('alert', 16) }}{{ errores[k] }}</span>{% endif %}{% endmacro %}
+{% block title %}Pago{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Pago con tarjeta</h1><p>Tu lugar está apartado. Completa el pago antes de que termine el tiempo para confirmar la reserva.</p></div></div>
+<div class="pago-grid">
+  <section class="card" aria-labelledby="pg-t">
+    <div class="step-head"><span class="step-n">{{ icon('card', 18) }}</span><h2 id="pg-t" style="font-size:1.25rem">Datos de la tarjeta</h2></div>
+    <p class="label" id="aceptadas-l" style="margin-bottom:8px">Aceptamos</p>
+    <ul class="marcas" aria-labelledby="aceptadas-l" id="marcas">{% for id, nombre in aceptadas %}{{ marca(id, nombre) }}{% endfor %}</ul>
+
+    <div class="cardface" id="cardface" aria-hidden="true">
+      <div class="cardface-top"><span id="cf-red">Tarjeta</span><span id="cf-banco"></span></div>
+      <div class="cardface-num" id="cf-num">•••• •••• •••• ••••</div>
+      <div class="cardface-bot"><span id="cf-nombre">NOMBRE DEL TITULAR</span><span id="cf-venc">MM/AA</span></div>
+    </div>
+
+    <form method="post" id="pago-form" autocomplete="off" novalidate data-bin="{{ url_for('api.bin_info') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field">
+        <label for="numero">Número de tarjeta</label>
+        <div class="input-icon">{{ icon('card', 19) }}
+          <input class="input mono-in" id="numero" name="numero" type="text" inputmode="numeric" autocomplete="off" maxlength="23" placeholder="0000 0000 0000 0000" required {% if errores.numero %}aria-invalid="true" aria-describedby="e-numero"{% endif %}>
+        </div>
+        <span class="hint" id="numero-hint" aria-live="polite"></span>
+        {{ err('numero') }}
+      </div>
+      <div class="field">
+        <label for="titular">Nombre del titular</label>
+        <input class="input" id="titular" name="titular" type="text" autocomplete="off" autocapitalize="characters" maxlength="60" placeholder="Como aparece en la tarjeta" value="{{ datos.titular or '' }}" required {% if errores.nombre %}aria-invalid="true" aria-describedby="e-nombre"{% endif %}>
+        {{ err('nombre') }}
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label for="vencimiento">Vencimiento</label>
+          <input class="input mono-in" id="vencimiento" name="vencimiento" type="text" inputmode="numeric" autocomplete="off" maxlength="7" placeholder="MM/AA" value="{{ datos.vencimiento or '' }}" required {% if errores.venc %}aria-invalid="true" aria-describedby="e-venc"{% endif %}>
+          {{ err('venc') }}
+        </div>
+        <div class="field">
+          <label for="cvv">CVV</label>
+          <input class="input mono-in" id="cvv" name="cvv" type="password" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="•••" required {% if errores.cvv %}aria-invalid="true" aria-describedby="e-cvv"{% endif %}>
+          {{ err('cvv') }}
+        </div>
+      </div>
+      <button class="btn btn--primary btn--block" id="btn-pagar" type="submit">{{ icon('lock', 18) }} Pagar {{ r.total_txt }} MXN</button>
+      <p class="secure-note">{{ icon('shield', 16) }}<span>Pago protegido: no guardamos tu número de tarjeta completo ni el CVV; solo los últimos 4 dígitos para tu comprobante. Máximo {{ intentos }} intentos por reserva.</span></p>
+      {% if demo %}
+      <details class="demo-box" style="margin-top:14px"><summary><b>Modo demostración</b> · no se hace ningún cargo real</summary>
+        <div class="mono" style="font-size:.82rem;line-height:1.9;margin-top:8px">
+          VISA 4111 1111 1111 1111 · Mastercard 5555 5555 5555 4444<br>
+          American Express 3782 822463 10005 (CVV de 4 dígitos)<br>
+          BBVA 4000 1000 0000 0000 · Citibanamex 5100 1000 0000 0006<br>
+          HSBC 4000 2000 0000 0008 · Banorte 5100 2000 0000 0004<br>
+          Scotiabank 4000 3000 0000 0006 · Inbursa 5100 3000 0000 0002<br>
+          Banco Azteca 4000 4000 0000 0004 · BanCoppel 5100 4000 0000 0000<br>
+          Rechazo: termina en 9995 (fondos) o 0119 (banco). Vencimiento futuro y CVV cualquiera.
+        </div>
+      </details>
+      {% endif %}
+    </form>
+  </section>
+
+  <aside class="pago-side">
+    <div class="timer" id="pago-timer" data-seg="{{ r.segundos }}" data-total="{{ config.PAGO_MINUTOS * 60 }}" role="timer" aria-live="off">
+      <div class="timer-top"><span>Tiempo para pagar</span><b id="timer-txt">{{ '%d:%02d' % (r.segundos // 60, r.segundos % 60) }}</b></div>
+      <div class="meter"><i id="timer-bar" style="width:100%"></i></div>
+      <p id="timer-msg">Si no pagas a tiempo, el lugar se libera automáticamente.</p>
+    </div>
+    <div class="card order">
+      <h3>Resumen de tu reserva</h3>
+      <dl>
+        <div><dt>Lugar</dt><dd>{{ r.espacio }}</dd></div>
+        {% if r.es_sala %}<div><dt>Equipo</dt><dd>{{ r.integrantes }} personas · {{ r.integrantes }} asientos</dd></div>{% endif %}
+        <div><dt>Fecha</dt><dd>{{ r.fecha|fecha }}</dd></div>
+        <div><dt>Horario reservado</dt><dd>{{ r.v.reservado }}{% if r.modo == 'dia' %} · día completo{% endif %}</dd></div>
+        <div><dt>Montaje · desmontaje</dt><dd>{{ r.v.montaje }} · {{ r.v.desmontaje }}</dd></div>
+      </dl>
+      <table class="totals">
+        <tr><td>{% if r.modo == 'dia' %}Tarifa de día completo{% else %}{{ precio.horas }} {{ 'hora' if precio.horas == 1 else 'horas' }}{% endif %}</td><td>{{ (precio.subtotal_cent)|mxn }}</td></tr>
+        <tr><td>IVA ({{ iva_pct }}%)</td><td>{{ (precio.iva_cent)|mxn }}</td></tr>
+        <tr class="grand"><td>Total MXN</td><td>{{ (precio.total_cent)|mxn }}</td></tr>
+      </table>
+      <form method="post" action="{{ url_for('client.pago_cancelar', folio=r.folio) }}" data-confirm="Se liberará el lugar apartado. No se hará ningún cargo." data-confirm-title="¿Cancelar este pago?" data-confirm-ok="Sí, liberar lugar">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn--ghost btn--sm" type="submit">Cancelar y liberar el lugar</button>
+      </form>
+    </div>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/pago.js') }}" defer></script>{% endblock %}

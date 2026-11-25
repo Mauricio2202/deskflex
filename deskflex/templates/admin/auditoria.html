@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Bitácora de seguridad{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Bitácora de seguridad</h1><p>Inicios de sesión, pagos y acciones del personal. No contiene contraseñas ni datos de tarjeta.</p></div></div>
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>Fecha</th><th>Evento</th><th>Usuario</th><th>Detalle</th><th>IP</th></tr></thead>
+    <tbody>
+    {% for a in filas %}
+      <tr><td data-label="Fecha" class="mono">{{ a.fecha }}</td><td data-label="Evento"><span class="badge {{ 'badge--denegado' if 'fallido' in a.evento or 'bloque' in a.evento or 'rechaz' in a.evento else 'badge--confirmada' }}">{{ a.evento }}</span></td>
+        <td data-label="Usuario">{{ a.nombre or '—' }}</td><td data-label="Detalle">{{ a.detalle }}</td><td data-label="IP" class="mono">{{ a.ip }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if not filas %}<div class="empty"><span class="ic-big">{{ icon('shield', 26) }}</span><b>Sin eventos todavía</b></div>{% endif %}
+</div>
+{% endblock %}

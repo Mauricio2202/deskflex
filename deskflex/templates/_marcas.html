@@ -1,0 +1,6 @@
+{# Etiquetas de tarjetas y bancos aceptados. Si existe static/img/marcas/<id>.svg|png se muestra el logo oficial; si no, una etiqueta de texto. #}
+{% macro marca(id, nombre, activa=false) -%}
+<li class="marca" data-marca="{{ id }}" {% if activa %}data-on="true"{% endif %}>
+  {% set src = marca_logo(id) %}{% if src %}<img src="{{ src }}" alt="{{ nombre }}" height="22">{% else %}<span class="marca-txt marca-txt--{{ id }}">{{ nombre }}</span>{% endif %}
+</li>
+{%- endmacro %}

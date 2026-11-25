@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% from "_plano.html" import plano %}
+{% block title %}Reservar espacio{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Reservar espacio</h1><p>Elige cuándo vienes y toca tu lugar en el mapa. Apartamos tu lugar y se confirma al pagar con tarjeta.</p></div>
+</div>
+<ol class="stepper" id="stepper" aria-label="Progreso de tu reserva">
+  <li class="now" data-s="1"><i>1</i>Elige cuándo</li><li data-s="2"><i>2</i>Elige tu lugar</li><li data-s="3"><i>3</i>Paga y confirma</li>
+</ol>
+<form method="post" id="booking-form" class="booking"
+      data-url="{{ url_for('api.disponibilidad') }}" data-hoy="{{ hoy }}" data-inicial="{{ inicial }}" data-max="{{ maximo }}"
+      data-cerrados="{{ cerrados|tojson|forceescape }}" data-apertura="{{ apertura }}" data-cierre="{{ cierre }}" data-min-equipo="{{ min_equipo }}" data-montaje="{{ montaje }}" data-desmontaje="{{ desmontaje }}" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="espacio" id="f-espacio"><input type="hidden" name="fecha" id="f-fecha">
+  <input type="hidden" name="tiene_equipo" id="f-equipo"><input type="hidden" name="integrantes" id="f-integrantes"><input type="hidden" name="modo" id="f-modo"><input type="hidden" name="inicio" id="f-inicio"><input type="hidden" name="fin" id="f-fin">
+
+  <section class="card" aria-labelledby="s1">
+    <div class="step-head"><span class="step-n">1</span><h2 id="s1" style="font-size:1.25rem">Elige cuándo</h2></div>
+    <div class="seg" role="radiogroup" aria-label="Tipo de reserva">
+      <input type="radio" name="modo_ui" id="m-hora" value="hora" checked><label for="m-hora">{{ icon('clock', 18) }} Por hora</label>
+      <input type="radio" name="modo_ui" id="m-dia" value="dia"><label for="m-dia">{{ icon('calendar', 18) }} Día completo</label>
+    </div>
+    <div class="cal" style="margin-top:22px">
+      <div class="cal-head">
+        <button type="button" class="icon-btn" id="cal-prev" aria-label="Mes anterior">{{ icon('chev-l', 18) }}</button>
+        <b id="cal-title" aria-live="polite"></b>
+        <button type="button" class="icon-btn" id="cal-next" aria-label="Mes siguiente">{{ icon('chev-r', 18) }}</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+    </div>
+    <div id="hours-wrap" style="margin-top:24px">
+      <p class="label" style="margin-bottom:10px">Horario <span class="hint" style="font-weight:500">· toca una hora y otra más para extenderlo</span></p>
+      <div class="chips" id="hours"></div>
+      <div class="range-note" id="range-note">{{ icon('clock', 18) }}<span></span></div>
+      <p class="hint" style="margin-top:10px">Cada reserva incluye <b>{{ montaje }} min antes</b> para acomodar tu espacio y <b>{{ desmontaje }} min después</b> para recoger y limpiar. Por eso entre dos reservas del mismo lugar queda una hora libre.</p>
+    </div>
+    <div class="range-note" id="day-note" hidden>{{ icon('clock', 18) }}<span>Todo el día: de {{ apertura|hora }} a {{ cierre|hora }}</span></div>
+  </section>
+
+  <section class="card map-card" aria-labelledby="s2">
+    <div class="step-head"><span class="step-n">2</span><h2 id="s2" style="font-size:1.25rem">Elige tu espacio</h2></div>
+    <div class="hint-bar"><span>{{ icon('pin', 17) }} Toca un <b>escritorio</b> u <b>hot desk</b> para ti</span><span>{{ icon('users', 17) }} Las <b>salas de juntas</b> son solo para equipos de trabajo</span></div>
+    <div class="map-top">
+      <div class="legend" aria-label="Leyenda del mapa">
+        <span><i class="l-libre"></i>Disponible</span><span><i class="l-ocupado"></i>Apartado por alguien</span><span><i class="l-sel"></i>Seleccionado</span>
+      </div>
+    </div>
+    <div class="map-tip" id="map-tip" role="tooltip"></div>
+    <div class="map-frame" id="map-frame">{{ plano(formas, espacios, none, true, uid='live') }}</div>
+    <div class="alert alert--info mapmsg" id="map-msg" role="status" hidden>{{ icon('info', 20) }}<span></span></div>
+    <div class="zones" aria-live="polite">
+      <span class="zone-chip" data-zone="salas">Salas <b>–</b> libres</span>
+      <span class="zone-chip" data-zone="fijo">Escritorios fijos <b>–</b> libres</span>
+      <span class="zone-chip" data-zone="hot">Hot desks <b>–</b> libres</span>
+      <span class="zone-chip" id="live-chip" title="El mapa se actualiza solo cuando otra persona reserva">{{ icon('zap', 15) }} En vivo</span>
+    </div>
+    <div class="summary">
+      <dl aria-live="polite">
+        <div><dt>Espacio</dt><dd id="sum-espacio" class="is-empty">Toca uno en el mapa</dd></div>
+        <div><dt>Fecha</dt><dd id="sum-fecha"></dd></div>
+        <div><dt>Horario</dt><dd id="sum-horario" class="is-empty">Elige una hora</dd></div>
+        <div><dt>Acceso (con montaje y desmontaje)</dt><dd id="sum-acceso" class="is-empty">—</dd></div>
+        <div><dt>Total (IVA incluido)</dt><dd id="sum-total" class="is-empty">—</dd></div>
+      </dl>
+      <button class="btn btn--accent" id="btn-confirm" type="submit" disabled>{{ icon('card', 18) }} Continuar al pago</button>
+    </div>
+  </section>
+</form>
+
+<dialog id="sala-dialog" aria-labelledby="sd-title">
+  <div class="modal-body">
+    <h2 id="sd-title">Sala de juntas</h2>
+    <div id="sd-q">
+      <p class="muted">Las salas de juntas son exclusivas para <b>equipos de trabajo grandes</b> (mínimo <span id="sd-min"></span> personas; capacidad hasta <span id="sd-cap"></span>).</p>
+      <p style="margin-top:14px;font-weight:700">¿Cuentas con un equipo de trabajo?</p>
+      <div class="dlg-actions"><button type="button" class="btn btn--primary" id="sd-si">Sí, somos un equipo</button><button type="button" class="btn btn--outline" id="sd-no-btn">No, voy solo</button></div>
+    </div>
+    <div id="sd-n" hidden>
+      <p class="muted">Indica cuántas personas formarán parte del equipo (contándote a ti).</p>
+      <div class="stepper-num" role="group" aria-label="Integrantes del equipo">
+        <button type="button" class="icon-btn" id="sd-menos" aria-label="Menos integrantes">−</button>
+        <input class="input" id="sd-num" type="number" inputmode="numeric" aria-label="Número de integrantes" value="4">
+        <button type="button" class="icon-btn" id="sd-mas" aria-label="Más integrantes">+</button>
+      </div>
+      <p class="note" style="margin-top:14px">{{ icon('users', 18) }}<span id="sd-info"></span></p>
+      <p class="hint" style="margin-top:10px">Al pagar recibirás un QR de invitación: cada integrante lo abre, se registra en DeskFlex y elige su asiento entre los apartados.</p>
+      <div class="dlg-actions"><button type="button" class="btn btn--ghost" data-close>Cancelar</button><button type="button" class="btn btn--primary" id="sd-ok">Apartar sala</button></div>
+    </div>
+    <div id="sd-no" hidden>
+      <div class="alert alert--error" role="alert">{{ icon('alert', 20) }}<span>Las salas de juntas son exclusivas para equipos de trabajo grandes. Si vienes solo, reserva un <b>escritorio fijo</b> o un <b>hot desk</b>.</span></div>
+      <div class="dlg-actions"><button type="button" class="btn btn--primary" data-close>Entendido</button></div>
+    </div>
+  </div>
+</dialog>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/reservar.js') }}" defer></script>{% endblock %}

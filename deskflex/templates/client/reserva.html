@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Pase {{ r.folio }}{% endblock %}
+{% block content %}
+<div class="page-head no-print" style="max-width:960px;margin-inline:auto">
+  <div><h1>Tu código QR</h1><p>{% if r.es_sala %}Comparte el enlace con tu equipo: este mismo QR es el acceso de todos los integrantes.{% else %}Muestra este código en la entrada para registrar tu acceso.{% endif %}</p></div>
+</div>
+<section class="pass" aria-label="Pase de acceso {{ r.folio }}">
+  <div class="pass-qr">
+    <img class="pass-logo" src="{{ url_for('static', filename='img/logo-mark-light.png') }}" alt="DeskFlex México" width="46" height="50">
+    <div class="qr-box">{{ r.qr|safe }}</div>
+    <span class="folio" style="background:rgba(255,255,255,.1);color:#fff">{{ r.folio }}</span>
+    <p>Sube el brillo de tu pantalla al escanear.</p>
+  </div>
+  <div class="pass-info">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+      <h2>{{ 'Acceso del equipo' if r.es_sala else 'Mi acceso' }}</h2><span class="badge badge--{{ r.estado_clave }}">{{ r.estado_txt }}</span>
+    </div>
+    <dl>
+      <div class="wide"><dt>Lugar</dt><dd>{{ r.espacio }}</dd></div>
+      <div><dt>Fecha</dt><dd>{{ r.fecha|fecha }}</dd></div>
+      <div><dt>Folio</dt><dd class="mono" style="font-weight:600">{{ r.folio }}</dd></div>
+      {% if r.es_sala %}<div><dt>Equipo</dt><dd>{{ r.integrantes }} personas</dd></div>{% endif %}
+      {% if user.rol == 'admin' %}<div><dt>Cliente</dt><dd>{{ r.cliente }}</dd></div>{% endif %}
+    </dl>
+
+    <div class="horario" aria-label="Horario y márgenes de acceso">
+      <div class="hz hz--mon"><b>Montaje</b><span>{{ r.v.montaje }}</span><small>{{ r.v.montaje_min }} min para acomodar lo que necesites</small></div>
+      <div class="hz hz--res"><b>Horario reservado</b><span>{{ r.v.reservado }}</span><small>{{ 'Día completo' if r.modo == 'dia' else 'Tu tiempo de uso' }}</small></div>
+      <div class="hz hz--des"><b>Desmontaje y limpieza</b><span>{{ r.v.desmontaje }}</span><small>{{ r.v.desmontaje_min }} min para recoger y dejar limpio</small></div>
+    </div>
+    <p class="hint">Acceso permitido de <b>{{ r.v.acceso }}</b>.{% if r.es_sala %} Pueden entrar hasta {{ r.integrantes }} personas con este código.{% else %} El código se puede usar una sola vez.{% endif %}</p>
+
+    {% if pago %}
+    <div class="note note--pago">{{ icon('card', 18) }}<span>Pagado <b>{{ pago.total }} MXN</b> con {{ pago.marca_txt }} •••• {{ pago.ultimos4 }}{% if pago.banco %} ({{ pago.banco }}){% endif %} · Folio de pago <span class="mono">{{ pago.folio_pago }}</span></span></div>
+    {% endif %}
+
+    {% if r.es_sala and r.estado == 'confirmada' %}
+    <div class="invite">
+      <h3>Invitar al equipo</h3>
+      <p class="muted">Cada integrante abre el enlace, se registra en DeskFlex y elige su asiento entre los {{ r.integrantes }} apartados.</p>
+      <div class="copy-row"><input class="input" id="inv-link" type="text" readonly value="{{ r.qr_url }}" aria-label="Enlace de invitación">
+        <button type="button" class="btn btn--outline btn--sm" data-copy="#inv-link">{{ icon('link', 16) }} Copiar</button>
+        <a class="btn btn--outline btn--sm" target="_blank" rel="noopener" href="https://wa.me/?text={{ ('Te invito a la junta del ' ~ (r.fecha|fecha) ~ ' en ' ~ r.espacio ~ ' (' ~ r.v.reservado ~ '). Elige tu asiento aquí: ' ~ r.qr_url)|urlencode }}">{{ icon('share', 16) }} WhatsApp</a></div>
+      <ul class="miembros">
+        {% for a, nombre in miembros %}<li class="{{ 'on' if nombre }}"><b>{{ a }}</b><span>{{ nombre or 'Disponible' }}</span></li>{% endfor %}
+      </ul>
+      <a class="btn btn--accent btn--sm" href="{{ url_for('client.invitacion', token=r.token) }}">{{ icon('users', 16) }} Elegir mi asiento</a>
+    </div>
+    {% endif %}
+
+    <div class="pass-actions">
+      <a class="btn btn--primary" href="{{ url_for('client.mis_reservas') if user.rol != 'admin' else url_for('admin.reservas') }}">Mis reservas</a>
+      {% if r.estado == 'confirmada' %}
+      <button type="button" class="btn btn--outline" data-print>{{ icon('printer', 18) }} Imprimir</button>
+      <a class="btn btn--outline" href="{{ url_for('client.reserva_qr', folio=r.folio) }}" download>{{ icon('download', 18) }} Descargar QR</a>
+      <a class="btn btn--outline" href="{{ url_for('client.ticket_pdf', folio=r.folio) }}">{{ icon('file', 18) }} Ticket de pago (PDF)</a>
+      <a class="btn btn--ghost" href="{{ url_for('client.ticket_html', folio=r.folio) }}">Ver ticket</a>
+      {% endif %}
+      {% if r.estado_clave == 'confirmada' and user.id == r.usuario_id %}
+      <form method="post" action="{{ url_for('client.cancelar', folio=r.folio) }}" data-confirm="Se liberará {{ r.espacio }} y tu código QR dejará de funcionar." data-confirm-title="¿Cancelar la reserva {{ r.folio }}?" data-confirm-ok="Sí, cancelar">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn--danger" type="submit">Cancelar reserva</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

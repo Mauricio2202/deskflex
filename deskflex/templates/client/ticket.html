@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Ticket {{ r.folio }}{% endblock %}
+{% block content %}
+<div class="page-head no-print" style="max-width:820px;margin-inline:auto">
+  <div><h1>Ticket de pago</h1><p>Comprobante de tu reserva con el código QR de check-in.</p></div>
+  <div class="pass-actions">
+    <button type="button" class="btn btn--primary" data-print>{{ icon('printer', 18) }} Imprimir</button>
+    <a class="btn btn--outline" href="{{ url_for('client.ticket_pdf', folio=r.folio) }}">{{ icon('download', 18) }} Descargar PDF</a>
+    <a class="btn btn--ghost" href="{{ url_for('client.reserva', folio=r.folio) }}">Volver al pase</a>
+  </div>
+</div>
+<article class="tk" aria-label="Ticket {{ r.folio }}">
+  <header class="tk-head">
+    <img src="{{ url_for('static', filename='img/logo-mark-light.png') }}" alt="" width="44" height="48">
+    <div><b>DeskFlex México</b><small>Ticket de pago y pase de check-in</small></div>
+    <div class="tk-folio"><small>FOLIO</small><b>{{ r.folio }}</b></div>
+  </header>
+  <div class="tk-body">
+    <div class="tk-data">
+      <h3>Reserva</h3>
+      <dl><dt>Lugar</dt><dd><b>{{ r.espacio }}</b></dd><dt>Fecha</dt><dd>{{ r.fecha|fecha }}</dd><dt>Cliente</dt><dd>{{ r.cliente }}</dd>
+        {% if r.es_sala %}<dt>Equipo</dt><dd>{{ r.integrantes }} personas ({{ r.integrantes }} asientos apartados)</dd>{% endif %}</dl>
+      <h3>Horario y acceso</h3>
+      <dl><dt>Horario reservado</dt><dd><b>{{ r.v.reservado }}</b></dd>
+        <dt>Montaje ({{ r.v.montaje_min }} min)</dt><dd>{{ r.v.montaje }}</dd>
+        <dt>Desmontaje y limpieza</dt><dd>{{ r.v.desmontaje }}</dd>
+        <dt>Acceso permitido</dt><dd><b>{{ r.v.acceso }}</b></dd></dl>
+      <h3>Pago</h3>
+      {% if pago %}
+      <dl><dt>Folio de pago</dt><dd><b>{{ pago.folio_pago }}</b></dd><dt>Fecha de pago</dt><dd>{{ pago.creado_en[:16] }}</dd>
+        <dt>Tarjeta</dt><dd>{{ pago.marca_txt }} •••• {{ pago.ultimos4 }}{% if pago.banco %} · {{ pago.banco }}{% endif %}</dd><dt>Autorización</dt><dd>{{ pago.autorizacion }}</dd></dl>
+      <table class="totals"><tr><td>Subtotal</td><td>{{ pago.subtotal }}</td></tr><tr><td>IVA ({{ iva_pct }}%)</td><td>{{ pago.iva }}</td></tr><tr class="grand"><td>TOTAL MXN</td><td>{{ pago.total }}</td></tr></table>
+      {% else %}<p class="muted">Sin pago registrado (reserva anterior al módulo de pagos).</p>{% endif %}
+    </div>
+    <div class="tk-qr">
+      <div class="qr-box">{{ r.qr|safe }}</div>
+      <b>Código de check-in</b><small>Muéstralo en recepción</small>
+    </div>
+  </div>
+  <footer class="tk-foot">
+    <p>El código es válido de {{ r.v.desde.strftime('%H:%M') }} (montaje) a {{ r.v.hasta.strftime('%H:%M') }} (fin del desmontaje) del día de la reserva.</p>
+    {% if r.es_sala %}<p>Este mismo QR sirve para todo el equipo: cada integrante abre el enlace de invitación, se registra en DeskFlex y elige su asiento.</p>{% endif %}
+    {% if demo %}<p><b>Pago de demostración: no se realizó ningún cargo real.</b></p>{% endif %}
+  </footer>
+</article>
+{% endblock %}

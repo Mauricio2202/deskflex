@@ -1,0 +1,19 @@
+{# Una sala de juntas con sus asientos. reservados: asientos apartados para el equipo; tomados: {asiento: usuario_id}. #}
+{% macro sala_asientos(f, e, reservados, tomados, mio) -%}
+<svg class="plano plano--live plano--sala" id="sala-svg" viewBox="{{ f.x - 10 }} {{ f.y - 10 }} {{ f.w + 20 }} {{ f.h + 20 }}" role="group" aria-label="Asientos de {{ e.nombre }}">
+  <rect class="shape-sala" x="{{ f.x }}" y="{{ f.y }}" width="{{ f.w }}" height="{{ f.h }}" rx="14"/>
+  <ellipse class="tbl-sala" cx="{{ f.mesa.cx }}" cy="{{ f.mesa.cy }}" rx="{{ f.mesa.rx }}" ry="{{ f.mesa.ry }}"/>
+  <text class="sala-t" x="{{ f.etiqueta[0] }}" y="{{ f.etiqueta[1] }}">Sala {{ f.numero }}</text>
+  {% for c in f.sillas %}
+    {% set k = loop.index %}
+    {% set est = 'nd' if k not in reservados else ('ocupado' if (k in tomados and mio != k) else 'libre') %}
+    <g class="seat" data-asiento="{{ k }}" data-estado="{{ est }}" data-sel="{{ 'true' if mio == k else 'false' }}" data-mio="{{ 'true' if mio == k else 'false' }}"
+       {% if k in reservados %}role="button" tabindex="{{ '0' if est == 'libre' or mio == k else '-1' }}" aria-pressed="{{ 'true' if mio == k else 'false' }}" aria-label="Asiento {{ k }}, {{ 'tuyo' if mio == k else ('ocupado' if est == 'ocupado' else 'disponible') }}"
+       {% else %}aria-hidden="true"{% endif %}>
+      <title>Asiento {{ k }}{% if k not in reservados %} (no apartado para este equipo){% endif %}</title>
+      <rect class="chair" x="{{ c[0] }}" y="{{ c[1] }}" width="{{ c[2] }}" height="{{ c[3] }}" rx="6"/>
+      <text class="snum" x="{{ c[0] + c[2] / 2 }}" y="{{ c[1] + c[3] / 2 + 0.5 }}">{{ k }}</text>
+    </g>
+  {% endfor %}
+</svg>
+{%- endmacro %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% from "client/_ticket.html" import ticket %}
+{% block title %}Mis reservas{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Mis reservas</h1><p>Tus pases de acceso, con el código QR listo para escanear.</p></div>
+  <a class="btn btn--accent" href="{{ url_for('client.reservar') }}">{{ icon('plus', 18) }} Nueva reserva</a>
+</div>
+<div class="section-title" style="margin-top:0"><h2>Próximas</h2><span>{{ activas|length }}</span></div>
+{% if activas %}
+  <div class="tickets">{% for r in activas %}{{ ticket(r, false, csrf_token()) }}{% endfor %}</div>
+{% else %}
+  <div class="card"><div class="empty"><span class="ic-big">{{ icon('qr', 26) }}</span><b>No tienes reservas próximas</b>
+    <p>Cuando reserves, tu pase aparecerá aquí.</p><a class="btn btn--primary" href="{{ url_for('client.reservar') }}">Reservar ahora</a></div></div>
+{% endif %}
+{% if unidas %}
+<div class="section-title"><h2>Salas a las que te uniste</h2><span>{{ unidas|length }}</span></div>
+<div class="tickets">{% for r in unidas %}
+  <article class="ticket"><div class="ticket-main">
+    <div class="ticket-top"><span class="folio">{{ r.folio }}</span><span class="badge badge--{{ r.estado_clave }}">{{ r.estado_txt }}</span></div>
+    <h3>{{ r.espacio }} · asiento {{ r.mi_asiento }}</h3>
+    <div class="ticket-meta"><span>{{ icon('calendar', 17) }}{{ r.fecha|fecha }}</span><span>{{ icon('clock', 17) }}{{ r|rango }}</span><span class="muted-s">Acceso {{ r.v.acceso }}</span></div>
+  </div>
+  <a class="ticket-qr" href="{{ url_for('client.invitacion', token=r.token) }}" aria-label="Ver mi asiento y el código QR">{{ r.qr|safe }}</a>
+  <div class="ticket-foot"><a class="btn btn--outline btn--sm" href="{{ url_for('client.invitacion', token=r.token) }}">{{ icon('qr', 17) }} Ver mi asiento y QR</a></div></article>
+{% endfor %}</div>
+{% endif %}
+{% if historial %}
+<div class="section-title"><h2>Historial</h2><span>{{ historial|length }}</span></div>
+<div class="tickets">{% for r in historial %}{{ ticket(r, true, csrf_token()) }}{% endfor %}</div>
+{% endif %}
+{% endblock %}
